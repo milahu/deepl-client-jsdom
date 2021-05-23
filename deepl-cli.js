@@ -54,6 +54,7 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
     // FIXME also cache the entry html file
     // -> mock response object for node_modules/jsdom/lib/api.js
     // const req = resourceLoaderForInitialRequest.fetch
+    // https://github.com/jsdom/jsdom/issues/2500
     if (url.endsWith('.js') == false) {
       if (isDebug) console.log(`fetch: download ${url}`);
       return super.fetch(url, options);
