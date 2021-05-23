@@ -28,15 +28,15 @@ if (isDebug) console.dir({ sourceLang, targetLang });
 // https://github.com/sindresorhus/get-stdin/blob/main/index.js
 const { stdin } = process;
 async function getStdin() {
-	let result = '';
-	if (stdin.isTTY) {
-		return result;
-	}
-	stdin.setEncoding('utf8');
-	for await (const chunk of stdin) {
-		result += chunk;
-	}
-	return result;
+  let result = '';
+  if (stdin.isTTY) {
+    return result;
+  }
+  stdin.setEncoding('utf8');
+  for await (const chunk of stdin) {
+    result += chunk;
+  }
+  return result;
 }
 
 class CustomResourceLoader extends jsdom.ResourceLoader {
@@ -44,6 +44,7 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
   fetch(url, options) {
 
     // ignore styles
+    // workaround for a bug in jsdom https://github.com/dperini/nwsapi/issues/46
     if (url.endsWith('.css')) {
       if (isDebug) console.log(`fetch: ignore ${url}`);
       return Promise.resolve(Buffer.from(''));
@@ -77,10 +78,12 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
     res = res.then(buffer => buffer.toString());
     res = res.then(str => {
       if (url.endsWith('.js')) {
-        // patch scripts for jsdom
+        // workaround for a bug in deepl
         // https://static.deepl.com/js/ext/all3.min.$16b60e.js
+        // deepl will test String(document.querySelectorAll)
+        // browser: "function querySelectorAll() { [native code] }"
+        // jsdom: "function querySelectorAll(...) { ... JS code ... }"
         str = str.replace(
-          //'Q=/^[^{]+\{\s*\[native \w/,',
           String.raw`Q=/^[^{]+\{\s*\[native \w/,`,
           `Q = { test: f => typeof f == 'function' },`
         );
@@ -195,7 +198,7 @@ async function main() {
     else {
       if (isDebug) console.log('waiting for ' + targetTextSelector);
     }
-    await sleep(500);
+    await sleep(100);
   }
 
   process.exit(0); // quickfix. otherwise jsdom keeps running
