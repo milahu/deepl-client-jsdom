@@ -1,0 +1,18 @@
+{
+  "name": "deepl-client-jsdom",
+  "version": "0.0.1",
+  "description": "javascript client for the deepl online translator at deepl.com/translate",
+  "bin": {
+    "deepl": "deepl-cli.js"
+  },
+  "keywords": [
+    "translate",
+    "translator",
+    "deepl"
+  ],
+  "author": "milahu",
+  "license": "CC0-1.0",
+  "dependencies": {
+    "jsdom": "*"
+  }
+}
