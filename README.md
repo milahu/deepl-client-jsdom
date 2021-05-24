@@ -23,5 +23,11 @@ Hallo Welt
 
 ## similar projects
 
-* [github.com/KevCui/translate-cli](https://github.com/KevCui/translate-cli) heavyweight from puppeteer dependency
-* [github.com/vsetka/deepl-translator-cli](https://github.com/vsetka/deepl-translator-cli) old and broken
+* [github.com/fkirc/attranslate](https://github.com/fkirc/attranslate)
+  * heavyweight from many features, dependencies, typescript
+  * only google translate, using official google api client
+  * input formats: xml, json, yaml
+* [github.com/KevCui/translate-cli](https://github.com/KevCui/translate-cli)
+  * heavyweight from puppeteer dependency
+* [github.com/vsetka/deepl-translator-cli](https://github.com/vsetka/deepl-translator-cli)
+  * old and broken
