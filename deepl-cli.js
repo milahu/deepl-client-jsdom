@@ -9,7 +9,11 @@ const cacheDir = getPath('cache') + '/deepl-client-jsdom';
 const userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36";
 const targetTextSelector = '#target-dummydiv';
 
+// TODO split large inputs in chunks under 5000 chars
+// TODO support google translate, to compare translations
+// TODO support xml for google translate (and for deepl which breaks xml in rare cases)
 // TODO run as daemon -> reduce latency?
+// TODO use original interface to fix translations?
 
 function showHelp() {
   const scriptPath = path.relative(process.cwd(), process.argv[1]);
@@ -40,8 +44,47 @@ async function getStdin() {
   return result;
 }
 
+// TODO refactor?
+function makeRequest(url, body, headers) {
+  const req = {
+    href: url,
+    response: { headers },
+    getHeader: () => undefined, // jsdom: req.getHeader("referer"),
+    then: callback => callback(body),
+  };
+  return req;
+}
+
+// TODO refactor?
+class MockFirstRequest {
+  constructor(url, cachePath) {
+    this.href = url;
+    this.cachePath = cachePath;
+    this.response = { headers: {} };
+  }
+  getHeader(key) { return this.response.headers[key]; } // jsdom: req.getHeader("referer"),
+  then(callback) {
+    let req;
+    var res = Promise.resolve();
+    res = res.then(() => (req = jsdom.ResourceLoader.prototype.fetch(this.href, options)));
+    res = res.then(buffer => buffer.toString());
+    res = res.then(body => {
+      this.response.headers = req.response.headers;
+      if (isDebug) console.dir({ firstRequest: { url: this.href, headers: req.response.headers } });
+      const cachePathHead = this.cachePath + '.head.json';
+      if (isDebug) console.dir({ cachePathHead });
+      fs.writeFileSync(this.cachePath, body, 'utf8');
+      fs.writeFileSync(cachePathHead, JSON.stringify(req.response.headers), 'utf8');
+      return callback(body);
+    });
+    return res;
+  }
+}
+
 class CustomResourceLoader extends jsdom.ResourceLoader {
 
+  isFirstRequest = true;
+  
   fetch(url, options) {
 
     // ignore styles
@@ -51,47 +94,58 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
       return Promise.resolve(Buffer.from(''));
     }
 
-    // bypass cache
-    // FIXME also cache the entry html file
-    // -> mock response object for node_modules/jsdom/lib/api.js
-    // const req = resourceLoaderForInitialRequest.fetch
-    // https://github.com/jsdom/jsdom/issues/2500
-    if (url.endsWith('.js') == false) {
-      if (isDebug) console.log(`fetch: download ${url}`);
-      return super.fetch(url, options);
-    }
-
-    const cachePath = cacheDir + url.replace(/^https?:\//, '');
-    //if (isDebug) console.log(`fetch: cachePath = ${JSON.stringify(cachePath)}`);
+    const cachePath = cacheDir + '/' + url.replace(/:/g, '/').replace(/\/{2,}/g, '/');
+    if (isDebug) console.log(`fetch: cachePath = ${JSON.stringify(cachePath)}`);
 
     // read from cache
     if (fs.existsSync(cachePath)) {
       if (isDebug) console.log(`fetch: use cached ${url}`);
-      var str = fs.readFileSync(cachePath, 'utf8');
-      return Promise.resolve(Buffer.from(str));
+      const body = fs.readFileSync(cachePath, 'utf8');
+      // handle first request
+      // needs http headers: content-type, set-cookie
+      if (this.isFirstRequest) {
+        const cachePathHead = cachePath + '.head.json';
+        if (isDebug) console.dir({ cachePathHead });
+        const headers = JSON.parse(fs.readFileSync(cachePathHead, 'utf8'));
+        if (isDebug) console.dir({ firstRequest: { url, headers } });
+        this.isFirstRequest = false;
+        return makeRequest(url, body, headers);
+      }
+      return Promise.resolve(Buffer.from(body));
     }
 
     // write to cache
     fs.mkdirSync(path.dirname(cachePath), { recursive: true });
     if (isDebug) console.log(`fetch: download ${JSON.stringify(url)}`);
-    
+
+    // handle first request
+    // needs content-type http header
+    if (this.isFirstRequest) {
+      this.isFirstRequest = false;
+      const req = new MockFirstRequest(url, cachePath);
+      return req;
+    }
+
     var res = Promise.resolve();
     res = res.then(() => super.fetch(url, options));
+    //let req;
+    //res = res.then(() => (req = super.fetch(url, options)));
     res = res.then(buffer => buffer.toString());
-    res = res.then(str => {
+    res = res.then(body => {
       if (url.endsWith('.js')) {
         // workaround for a bug in deepl
         // https://static.deepl.com/js/ext/all3.min.$16b60e.js
         // deepl will test String(document.querySelectorAll)
         // browser: "function querySelectorAll() { [native code] }"
         // jsdom: "function querySelectorAll(...) { ... JS code ... }"
-        str = str.replace(
+        body = body.replace(
           String.raw`Q=/^[^{]+\{\s*\[native \w/,`,
           `Q = { test: f => typeof f == 'function' },`
         );
       }
-      fs.writeFileSync(cachePath, str, 'utf8');
-      return Buffer.from(str);
+      fs.writeFileSync(cachePath, body, 'utf8');
+      //return body;
+      return Buffer.from(body);
     });
     return res;
   }
@@ -178,12 +232,19 @@ async function main() {
 
   const dom = await jsdom.JSDOM.fromURL(url, options);
 
+  if (!dom) {
+    console.log('error: failed to load dom');
+    return;
+    process.exit(1);
+  }
+
   if (isDebug) console.log(dom.window.document.cookie.split('; ').map(c => `received cookie: ${c}`).join('\n'));
 
   if (isDebug) console.log('load deepl');
   await sleep(1000);
 
-  for (let round = 0; round < 10; round++) {
+  const stepMs = 100;
+  for (let round = 0; round < 1000; round++) {
 
     const targetTextElement = dom.window.document.querySelector(targetTextSelector);
     if (targetTextElement) {
@@ -191,7 +252,7 @@ async function main() {
         ? targetTextElement.innerHTML.slice(0, -2)
         : targetTextElement.innerHTML
       ;
-      if (isDebug) console.dir({ targetText });
+      if (isDebug) console.dir({ time: round * stepMs / 1000, targetText });
       if (targetText.trim().length > 0) {
         console.log(targetText);
         break; // found
@@ -200,7 +261,7 @@ async function main() {
     else {
       if (isDebug) console.log('waiting for ' + targetTextSelector);
     }
-    await sleep(100);
+    await sleep(stepMs);
   }
 
   process.exit(0); // quickfix. otherwise jsdom keeps running
