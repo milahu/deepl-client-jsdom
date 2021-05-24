@@ -5,6 +5,7 @@
   "bin": {
     "deepl": "deepl-cli.js"
   },
+  "type": "module",
   "keywords": [
     "translate",
     "translator",
@@ -14,6 +15,8 @@
   "license": "CC0-1.0",
   "dependencies": {
     "jsdom": "*",
+    "node-fetch": "*",
+    "node-fetch-cookies": "*",
     "platform-folders": "*"
   }
 }
