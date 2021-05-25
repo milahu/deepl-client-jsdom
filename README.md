@@ -29,5 +29,8 @@ Hallo Welt
   * input formats: xml, json, yaml
 * [github.com/KevCui/translate-cli](https://github.com/KevCui/translate-cli)
   * heavyweight from puppeteer dependency
+* [github.com/milahu/deepl-client-filesystem](https://github.com/milahu/deepl-client-filesystem)
+  * use the original deepl.com interface in connection with a local backend server to load and store text files
+  * abandoned
 * [github.com/vsetka/deepl-translator-cli](https://github.com/vsetka/deepl-translator-cli)
   * old and broken
