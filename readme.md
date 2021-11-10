@@ -24,6 +24,14 @@ Hallo Welt
 
 ## similar projects
 
+* [github.com/milahu/alchi/src/alchi-book/scripts/translate.js](https://github.com/milahu/alchi/blob/master/src/alchi-book/scripts/translate.js)
+  * google translate client for large html documents.  
+    usually google charges money to translate richtext or large documents
+  * semi-automatic tool.  
+    currently requires to copy-paste text to and from the translator service,  
+    but this could be automated with jsdom as show here (in `deepl-client-jsdom`)
+  * also supports deepl translate
+  * also posted to [webapps.stackexchange.com](https://webapps.stackexchange.com/a/154694/273346)
 * [github.com/fkirc/attranslate](https://github.com/fkirc/attranslate)
   * heavyweight from many features, dependencies, typescript
   * only google translate, using official google api client
