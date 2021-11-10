@@ -7,6 +7,7 @@ javascript client for the deepl online translator at [deepl.com/translator](http
 ```
 git clone https://github.com/milahu/deepl-client-jsdom.git
 cd deepl-client-jsdom
+npm install
 
 echo "hello world" | node deepl-cli.js en de
 Hallo Welt
@@ -15,7 +16,7 @@ Hallo Welt
 ## global install
 
 ```
-npm i -g https://github.com/milahu/deepl-client-jsdom.git
+npm install -g https://github.com/milahu/deepl-client-jsdom.git
 
 echo "hello world" | deepl en de
 Hallo Welt
