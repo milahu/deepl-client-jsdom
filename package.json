@@ -18,5 +18,9 @@
     "node-fetch": "*",
     "node-fetch-cookies": "*",
     "platform-folders": "*"
-  }
+  },
+  "engines": {
+    "node": ">=12"
+  },
+  "engineStrict": "is set in .npmrc"
 }
