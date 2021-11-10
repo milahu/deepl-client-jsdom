@@ -16,6 +16,17 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function handleImportError(e, modName) {
+  console.log(`error: could not import ${modName} from node_modules`)
+  if (e.message == 'Not supported') {
+    console.log(`${modName} error: your nodejs version is not supported`);
+  }
+  else {
+    console.log(`${modName} error: ${e.message}`);
+  }
+  process.exit(1);
+}
+
 
 
 if (useHacky) {
@@ -24,10 +35,16 @@ if (useHacky) {
 
     console.log('useHacky\n');
     console.log('warning: this can get your IP blocked with "Too many requests."\n');
-    console.log('will continue in 1 sec ...\n');
-    await sleep(1000);
+    //console.log('will continue in 1 sec ...\n');
+    //await sleep(1000);
   
-    const fs = await import("fs");
+    let fs;
+    try {
+      fs = await import('fs');
+    }
+    catch (e) {
+      handleImportError(e, 'fs');
+    }
 
     var t1 = new Date().getTime();
     const getPath = (await import('platform-folders')).default.default;
@@ -84,7 +101,8 @@ if (useHacky) {
         var data = await res.json();
         console.dir(data);
         if (!res.ok) {
-          if (data?.error?.message) {
+          //if (data?.error?.message) {
+          if (data && data.error && data.error.message) {
             console.log(`error: ${data.error.message}`)
             if (data.error.code == 1042912) {
               // original ip block message:
@@ -317,7 +335,13 @@ else {
 async function main() {
 
 var t1 = new Date().getTime();
-const jsdom = await import('jsdom');
+let jsdom;
+try {
+  jsdom = await import('jsdom');
+}
+catch (e) {
+  handleImportError(e, 'jsdom');
+}
 if (showTime) console.log(`time: ${(new Date().getTime() - t1) / 1000} sec to require jsdom`)
 
 const fs = await import('fs');
@@ -406,8 +430,6 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
   // cache and patch requests
   // a simple version of https://github.com/alltherooms/cached-request
 
-  isFirstRequest = true;
-
   fetch(url, options) {
 
     // ignore styles
@@ -429,12 +451,12 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
       if (showDebug && url.endsWith('.js')) {
         body = body.replace(/dbg ?= ?!1,/g, 'dbg=true,');
       }
-      if (this.isFirstRequest) {
+      if (!this.doneFirstRequest) {
         const cachePathHead = cachePath + '.head.json';
         if (showDebug) console.dir({ cachePathHead });
         const headers = JSON.parse(fs.readFileSync(cachePathHead, 'utf8'));
         if (showDebug) console.dir({ firstRequest: { url, headers } });
-        this.isFirstRequest = false;
+        this.doneFirstRequest = true;
         return makeRequest(url, body, headers);
       }
       return Promise.resolve(Buffer.from(body));
@@ -446,8 +468,8 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
 
     // handle first request
     // needs content-type http header
-    if (this.isFirstRequest) {
-      this.isFirstRequest = false;
+    if (!this.doneFirstRequest) {
+      this.doneFirstRequest = true;
       const req = new MockFirstRequest(url, cachePath);
       return req;
     }
