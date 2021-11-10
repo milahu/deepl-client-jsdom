@@ -20,13 +20,13 @@ function sleep(ms) {
 
 if (useHacky) {
 
-  console.log('useHacky\n');
-  console.log('warning: this can get your IP blocked with "Too many requests."\n');
-  console.log('will continue in 1 sec ...\n');
-  await sleep(1000);
-
   (async () => {
 
+    console.log('useHacky\n');
+    console.log('warning: this can get your IP blocked with "Too many requests."\n');
+    console.log('will continue in 1 sec ...\n');
+    await sleep(1000);
+  
     const fs = await import("fs");
 
     var t1 = new Date().getTime();
